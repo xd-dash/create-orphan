@@ -1,0 +1,92 @@
+name: Create Orphan Branch
+description: Create and push an empty orphan branch in the calling repository.
+author: xd-dash
+
+branding:
+  icon: git-branch
+  color: blue
+
+inputs:
+  branch:
+    description: Branch name to create.
+    required: true
+  append-random-suffix:
+    description: Append an 8-character hexadecimal suffix to the branch name.
+    required: false
+    default: "false"
+  token:
+    description: Token used by actions/checkout and git push. Defaults to github.token.
+    required: false
+    default: ""
+  commit-message:
+    description: Message for the empty root commit.
+    required: false
+    default: Initialize orphan branch
+
+outputs:
+  branch:
+    description: The branch name that was created.
+    value: ${{ steps.create.outputs.branch }}
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+        token: ${{ inputs.token || github.token }}
+
+    - name: Create orphan branch
+      id: create
+      shell: bash
+      env:
+        REQUESTED_BRANCH: ${{ inputs.branch }}
+        APPEND_RANDOM_SUFFIX: ${{ inputs.append-random-suffix }}
+        COMMIT_MESSAGE: ${{ inputs.commit-message }}
+      run: |
+        set -euo pipefail
+
+        branch="$REQUESTED_BRANCH"
+
+        [[ -n "$branch" ]] || {
+          echo "::error::branch is required"
+          exit 1
+        }
+
+        case "$APPEND_RANDOM_SUFFIX" in
+          true|false) ;;
+          *)
+            echo "::error::append-random-suffix must be true or false"
+            exit 1
+            ;;
+        esac
+
+        git check-ref-format --branch "$branch"
+
+        if [[ "$APPEND_RANDOM_SUFFIX" == "true" ]]; then
+          branch="${branch}-$(openssl rand -hex 4)"
+          git check-ref-format --branch "$branch"
+        fi
+
+        if git ls-remote --exit-code --heads origin "refs/heads/$branch" >/dev/null 2>&1; then
+          echo "::error::Branch '$branch' already exists"
+          exit 1
+        fi
+
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+        git switch --orphan "$branch"
+        git rm -rf --ignore-unmatch .
+        git clean -fdx
+        git commit --allow-empty -m "$COMMIT_MESSAGE"
+        git push origin "HEAD:refs/heads/$branch"
+
+        echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+        {
+          echo "### Orphan branch created"
+          echo
+          echo "- Branch: \`$branch\`"
+        } >> "$GITHUB_STEP_SUMMARY"
