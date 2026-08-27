@@ -42,8 +42,8 @@ runs:
       shell: bash
       env:
         REQUESTED_BRANCH: ${{ inputs.branch }}
-        APPEND_RANDOM_SUFFIX: ${{ inputs.append-random-suffix }}
-        COMMIT_MESSAGE: ${{ inputs.commit-message }}
+        APPEND_RANDOM_SUFFIX: ${{ inputs['append-random-suffix'] }}
+        COMMIT_MESSAGE: ${{ inputs['commit-message'] }}
       run: |
         set -euo pipefail
 
