@@ -1,0 +1,4 @@
+# Example input for .github/workflows/example-pseudo-dispatch.yml.
+# An agent can change these values, commit this file, and push it.
+branch=agent-job
+append_random_suffix=true
